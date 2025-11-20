@@ -20,11 +20,7 @@ const app = express();
 app.use(bodyParser.json());
 
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
-const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL;
-
-/* 🔥 SECRET BLOCK REMOVED COMPLETELY 
-   because Telegram webhook returns 401 when expecting x-webhook-secret
-*/
+const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL; // URL to POST results
 
 function extractBarcode(text) {
   if (!text) return null;
@@ -38,22 +34,14 @@ function analyzeReactionsFromUpdate(update) {
 
   if (update.message?.reactions) reactions = update.message.reactions;
   if (!reactions && update.edited_message?.reactions) reactions = update.edited_message.reactions;
-
-  if (!reactions && update.messageReaction?.reactions)
-    reactions = update.messageReaction.reactions;
-
-  if (!reactions && update.reaction)
-    reactions = update.reaction;
+  if (!reactions && update.messageReaction?.reactions) reactions = update.messageReaction.reactions;
+  if (!reactions && update.reaction) reactions = update.reaction;
 
   if (Array.isArray(reactions)) {
     reactions.forEach(r => {
       const emoji = r.emoji || r.type || '';
       const actor = r.actor || r.user || r.from || {};
-      const name =
-        actor.last_name ||
-        actor.username ||
-        actor.first_name ||
-        'Неизвестно';
+      const name = actor.last_name || actor.username || actor.first_name || 'Неизвестно';
       const ts = r.date || r.time || null;
       candidates.push({ emoji, name, ts });
     });
@@ -62,20 +50,14 @@ function analyzeReactionsFromUpdate(update) {
   if (!candidates.length && update.reaction && update.from) {
     const emoji = update.reaction.emoji;
     const actor = update.from;
-    const name =
-      actor.last_name ||
-      actor.username ||
-      actor.first_name ||
-      'Неизвестно';
+    const name = actor.last_name || actor.username || actor.first_name || 'Неизвестно';
     candidates.push({ emoji, name, ts: update.date || null });
   }
 
   if (!candidates.length) return null;
 
   const hasLike = candidates.some(c => c.emoji?.includes('👍'));
-  const hasDislike = candidates.some(
-    c => c.emoji?.includes('👎') || c.emoji?.toLowerCase().includes('dislike')
-  );
+  const hasDislike = candidates.some(c => c.emoji?.includes('👎') || c.emoji?.toLowerCase().includes('dislike'));
 
   candidates.sort((a, b) => {
     if (a.ts && b.ts) return a.ts - b.ts;
@@ -99,12 +81,7 @@ app.post('/webhook', async (req, res) => {
   try {
     const update = req.body;
 
-    const message =
-      update.message ||
-      update.edited_message ||
-      update.channel_post ||
-      update.edited_channel_post;
-
+    const message = update.message || update.edited_message || update.channel_post || update.edited_channel_post;
     const text = message ? message.text || message.caption || '' : '';
     const barcode = extractBarcode(text);
 
@@ -139,6 +116,4 @@ app.post('/webhook', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () =>
-  console.log(`Webhook server listening on port ${PORT}`)
-);
+app.listen(PORT, () => console.log(`Webhook server listening on port ${PORT}`));
